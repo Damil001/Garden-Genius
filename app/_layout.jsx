@@ -10,7 +10,7 @@ const tokenCache = {
     try {
       const item = await SecureStore.getItemAsync(key);
       if (item) {
-        console.log(`${key} was used 🔐 \n`);
+        console.log(`${key} was used 🔐, token: ${item}`);
       } else {
         console.log("No values stored under key: " + key);
       }
@@ -25,12 +25,14 @@ const tokenCache = {
     try {
       return SecureStore.setItemAsync(key, value);
     } catch (err) {
+      console.error("Error saving token:", err);
       return;
     }
   },
 };
 
-const publishableKey = process.env.EXPO_PUBLIC_CLERK_PUBLISHABLE_KEY;
+const publishableKey =
+  "pk_test_Y3Jpc3AtbGFjZXdpbmctNy5jbGVyay5hY2NvdW50cy5kZXYk";
 
 if (!publishableKey) {
   throw new Error(
@@ -39,6 +41,7 @@ if (!publishableKey) {
 }
 
 function RootLayoutNav() {
+  console.log("Rendering RootLayoutNav with ClerkProvider");
   return (
     <ClerkProvider tokenCache={tokenCache} publishableKey={publishableKey}>
       <ClerkLoaded>
