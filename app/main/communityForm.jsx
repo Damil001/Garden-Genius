@@ -291,271 +291,283 @@ export default function CommunityForm() {
   };
 
   return (
-    <ScrollView>
-      <View>
-        <XStack justifyContent="space-evenly" alignItems="center">
-          <TextInput
-            placeholder="Search posts..."
-            value={searchQuery}
-            onChangeText={setSearchQuery}
-            style={[styles.searchInput, { width: "80%" }]}
-          />
-          <TouchableOpacity onPress={handleOpenSheet} style={styles.addButton}>
-            <Ionicons name="add-circle-outline" size={24} color="white" />
-          </TouchableOpacity>
-        </XStack>
+    <View className="flex-1 bg-gray-50">
+      <ScrollView className="flex-1">
+        {/* Search Bar and Add Post Button */}
+        <View className="bg-green-600 pt-14 pb-6 px-4">
+          <View className="flex-row items-center gap-3">
+            <View className="flex-1 relative">
+              <TextInput
+                placeholder="Search plant stories..."
+                placeholderTextColor="white"
+                value={searchQuery}
+                onChangeText={setSearchQuery}
+                className="bg-white/20 px-4 py-2.5 rounded-xl text-white pr-10"
+              />
+              <MaterialIcons
+                name="search"
+                size={20}
+                color="white"
+                style={{ position: "absolute", right: 12, top: 12 }}
+              />
+            </View>
+            <TouchableOpacity
+              onPress={handleOpenSheet}
+              className="bg-white/20 p-3 rounded-xl"
+            >
+              <Ionicons name="add" size={24} color="white" />
+            </TouchableOpacity>
+          </View>
+        </View>
 
-        <View>
-          {isFetchingPosts ? ( // Show loader if fetching posts
-            <ActivityIndicator size="large" color="#4CAF50" />
+        {/* Posts List */}
+        <View className="px-4 -mt-4">
+          {isFetchingPosts ? (
+            <ActivityIndicator size="large" color="#16a34a" className="py-8" />
           ) : (
-            <YStack>
+            <View className="space-y-4 pb-4">
               {filteredPosts.map((post) => (
-                <Card
+                <View
                   key={post.id}
-                  themeInverse
-                  bordered
-                  backgroundColor="#fff"
-                  padding="$4"
-                  margin="$2"
-                  borderRadius="$3"
+                  className="bg-white rounded-2xl shadow-sm overflow-hidden"
                 >
-                  <Card.Header>
-                    <H3 extraBold color="$color11">
-                      {post.title}
-                    </H3>
-                  </Card.Header>
+                  {/* User Info */}
+                  <View className="p-4 flex-row items-center border-b border-gray-100">
+                    <View className="bg-green-100 p-2 rounded-full">
+                      <Ionicons name="leaf" size={20} color="#16a34a" />
+                    </View>
+                    <View className="ml-3">
+                      <Text className="text-base font-semibold text-gray-800">
+                        {post.userName}
+                      </Text>
+                      <Text className="text-sm text-gray-500">
+                        {post.plantType}
+                      </Text>
+                    </View>
+                  </View>
+
+                  {/* Post Image */}
                   <Image
                     source={{ uri: post.plantImage }}
-                    style={styles.cardImage}
+                    className="w-full h-56"
                   />
-                  <Card.Footer
-                    justifyContent="space-between"
-                    padding="$2"
-                    backgroundColor="#f0f0f0"
-                  >
-                    <Text
-                      color="$color1"
-                      fontSize="$2"
-                      style={styles.cardContent}
-                    >
+
+                  {/* Post Content */}
+                  <View className="p-4">
+                    <Text className="text-lg font-semibold text-gray-800 mb-2">
+                      {post.title}
+                    </Text>
+                    <Text className="text-gray-600 leading-relaxed">
                       {post.content}
                     </Text>
-                    <Text
-                      color="$color2"
-                      fontSize="$1"
-                      style={styles.cardContent}
+                  </View>
+
+                  {/* Interaction Buttons */}
+                  <View className="flex-row items-center justify-between px-4 py-3 bg-gray-50">
+                    <TouchableOpacity
+                      onPress={() => handleLike(post.id)}
+                      className="flex-row items-center space-x-1"
                     >
-                      {post.plantType}
-                    </Text>
-                  </Card.Footer>
-                  <XStack justifyContent="flex-end" marginTop="$5" gap="$4">
-                    <Button onPress={() => handleLike(post.id)}>
-                      <MaterialIcons
-                        name="thumb-up"
-                        size={24}
+                      <Ionicons
+                        name={
+                          post.likedBy?.includes(user.id)
+                            ? "heart"
+                            : "heart-outline"
+                        }
+                        size={20}
                         color={
-                          post.likedBy?.includes(user.id) ? "#4CAF50" : "#888"
+                          post.likedBy?.includes(user.id) ? "#16a34a" : "#666"
                         }
                       />
-                      <Text>{post.likesCount || 0}</Text>
-                    </Button>
-                    <Button onPress={() => handleOpenComment(post.id)}>
-                      <MaterialIcons name="comment" size={24} color="#4CAF50" />
-                    </Button>
-                    <Button>
-                      <MaterialIcons
-                        name="thumb-down"
-                        size={24}
-                        color="#4CAF50"
+                      <Text className="text-gray-600">
+                        {post.likesCount || 0}
+                      </Text>
+                    </TouchableOpacity>
+
+                    <TouchableOpacity
+                      onPress={() => handleOpenComment(post.id)}
+                      className="flex-row items-center space-x-2"
+                    >
+                      <Ionicons
+                        name="chatbubble-outline"
+                        size={20}
+                        color="#666"
                       />
-                    </Button>
-                  </XStack>
-                </Card>
+                      <Text className="text-gray-600">Comment</Text>
+                    </TouchableOpacity>
+                  </View>
+                </View>
               ))}
-            </YStack>
+            </View>
           )}
         </View>
 
+        {/* Comment Sheet */}
         {selectedPost && (
           <Sheet
-            modal={true}
+            modal
             open={!!selectedPost}
             onOpenChange={() => setSelectedPost(null)}
-            style={{ backgroundColor: "white" }}
             snapPoints={[70]}
             dismissOnSnapToBottom
           >
-            <Sheet.Overlay opacity={0} />
-            <Sheet.Frame backgroundColor="white" padding={20}>
+            <Sheet.Frame style={styles.sheetContainer}>
               <Sheet.Handle />
-              <Sheet.ScrollView>
-                <XStack justifyContent="space-between">
-                  <Text>Add a Comment</Text>
-                  <Button onPress={() => setSelectedPost(null)}>
-                    <Ionicons name="close" size={24} color="#4CAF50" />
-                  </Button>
-                </XStack>
-                <YStack gap="$4" marginTop={20}>
+              <View className="px-4 py-3 border-b border-gray-100">
+                <Text className="text-lg font-semibold text-gray-800">
+                  Community Discussion
+                </Text>
+              </View>
+
+              <ScrollView className="p-4">
+                {/* Comment Input */}
+                <View className="mb-4">
                   <TextInput
-                    placeholder="Write a comment..."
+                    placeholder="Share your gardening thoughts..."
                     value={commentText}
                     onChangeText={setCommentText}
-                    style={styles.input}
+                    className="bg-gray-50 p-3 rounded-xl text-gray-800"
+                    multiline
                   />
-                  <Button onPress={() => handleComment(selectedPost)}>
-                    <MaterialIcons name="send" size={24} color="#4CAF50" />
-                    Submit Comment
-                  </Button>
+                  <TouchableOpacity
+                    onPress={() => handleComment(selectedPost)}
+                    className="bg-green-600 mt-2 py-2.5 rounded-xl flex-row items-center justify-center"
+                  >
+                    <Text className="text-white font-medium">
+                      Share Comment
+                    </Text>
+                  </TouchableOpacity>
+                </View>
 
+                {/* Comments List */}
+                <View className="space-y-3">
                   {comments.map((comment) => (
-                    <View key={comment.id} style={styles.comment}>
-                      <Text style={styles.commentUser}>
-                        {comment.userName}:
+                    <View
+                      key={comment.id}
+                      className="bg-gray-50 p-4 rounded-xl mb-2"
+                    >
+                      <View className="flex-row items-center mb-2">
+                        <View className="bg-green-100 p-1.5 rounded-full">
+                          <Ionicons name="person" size={16} color="#16a34a" />
+                        </View>
+                        <Text className="font-medium text-gray-800 ml-2">
+                          {comment.userName}
+                        </Text>
+                      </View>
+                      <Text className="text-gray-600 mb-2">
+                        {comment.commentText}
                       </Text>
-                      <XStack
-                        justifyContent="space-between"
-                        alignItems="center"
-                      >
-                        <Text>{comment.commentText}</Text>
-                        <Button
-                          themeInverse
+                      <View className="flex-row justify-end">
+                        <TouchableOpacity
                           onPress={() =>
                             handleCommentLike(selectedPost, comment.id)
                           }
+                          className="flex-row items-center space-x-1"
                         >
-                          <MaterialIcons
-                            name="thumb-up"
-                            size={24}
+                          <Ionicons
+                            name={
+                              comment.likedBy?.includes(user.id)
+                                ? "heart"
+                                : "heart-outline"
+                            }
+                            size={16}
                             color={
                               comment.likedBy?.includes(user.id)
-                                ? "#4CAF50"
-                                : "#888"
+                                ? "#16a34a"
+                                : "#666"
                             }
                           />
-                          <Text>{comment.likesCount || 0}</Text>
-                        </Button>
-                      </XStack>
+                          <Text className="text-gray-600">
+                            {comment.likesCount || 0}
+                          </Text>
+                        </TouchableOpacity>
+                      </View>
                     </View>
                   ))}
-                </YStack>
-              </Sheet.ScrollView>
+                </View>
+              </ScrollView>
             </Sheet.Frame>
           </Sheet>
         )}
 
+        {/* Create Post Sheet */}
         <Sheet
-          modal={true}
+          modal
           open={isSheetOpen}
-          onOpenChange={(open) => setIsSheetOpen(open)}
-          style={{ backgroundColor: "white" }}
+          onOpenChange={setIsSheetOpen}
           snapPoints={[70]}
           dismissOnSnapToBottom
         >
-          <Sheet.Overlay opacity={0} />
-          <Sheet.Frame backgroundColor="white" padding={20}>
+          <Sheet.Frame style={styles.sheetContainer}>
             <Sheet.Handle />
-            <Sheet.ScrollView>
-              <XStack justifyContent="space-between">
-                <Text>Add a Post</Text>
-                <Button onPress={handleCloseSheet}>
-                  <Ionicons name="close" size={24} color="#4CAF50" />
-                </Button>
-              </XStack>
-              <YStack gap="$4" marginTop={20}>
+            <View className="px-4 py-3 border-b border-gray-100">
+              <Text className="text-lg font-semibold text-gray-800">
+                Share Your Plant Story
+              </Text>
+            </View>
+
+            <ScrollView className="p-4">
+              <View className="space-y-4">
                 <TextInput
-                  placeholder="Post Title"
+                  placeholder="Give your story a title..."
                   value={title}
                   onChangeText={setTitle}
-                  style={styles.input}
+                  className="bg-gray-50 px-4 py-3 rounded-xl text-gray-800"
                 />
+
                 <TextInput
-                  placeholder="Post Content"
+                  placeholder="What's happening in your garden?"
                   value={content}
                   onChangeText={setContent}
-                  style={styles.input}
+                  multiline
+                  numberOfLines={4}
+                  className="bg-gray-50 px-4 py-3 rounded-xl text-gray-800"
                 />
+
                 <TextInput
-                  placeholder="Plant Type"
+                  placeholder="What type of plant is this?"
                   value={plantType}
                   onChangeText={setPlantType}
-                  style={styles.input}
+                  className="bg-gray-50 px-4 py-3 rounded-xl text-gray-800"
                 />
-                <Button
-                  iconAfter={
-                    <Ionicons name="image" size={24} color="#4CAF50" />
-                  }
+
+                <TouchableOpacity
                   onPress={handleImagePicker}
+                  className="bg-gray-50 p-4 rounded-xl flex-row items-center justify-center border-2 border-dashed border-gray-200"
                 >
-                  Pick Plant Image
-                </Button>
+                  <Ionicons name="image-outline" size={24} color="#16a34a" />
+                  <Text className="ml-2 text-gray-600">Add Plant Photo</Text>
+                </TouchableOpacity>
+
                 {plantImage && (
-                  <Image
-                    source={{ uri: plantImage.assets[0].uri }}
-                    style={styles.image}
-                  />
+                  <View className="rounded-xl overflow-hidden">
+                    <Image
+                      source={{ uri: plantImage.assets[0].uri }}
+                      className="w-full h-48"
+                    />
+                  </View>
                 )}
-                <Button
-                  size="$4"
-                  iconAfter={
-                    <MaterialIcons name="post-add" size={24} color="#4CAF50" />
-                  }
+
+                <TouchableOpacity
                   onPress={handleCreatePost}
                   disabled={isLoading}
+                  className="bg-green-600 py-3 rounded-xl flex-row items-center justify-center"
                 >
-                  {isLoading ? "Creating Post..." : "Create Post"}
-                </Button>
-              </YStack>
-            </Sheet.ScrollView>
+                  <Text className="text-white font-medium">
+                    {isLoading ? "Sharing..." : "Share with Community"}
+                  </Text>
+                </TouchableOpacity>
+              </View>
+            </ScrollView>
           </Sheet.Frame>
         </Sheet>
-      </View>
-    </ScrollView>
+      </ScrollView>
+    </View>
   );
 }
-
 const styles = StyleSheet.create({
-  input: {
-    borderWidth: 1,
-    borderColor: "gray",
-    borderRadius: 5,
+  sheetContainer: {
+    backgroundColor: "#fff",
     padding: 10,
-  },
-  image: {
-    width: "100%",
-    height: 200,
-  },
-  cardImage: {
-    width: "100%",
-    height: 200,
-    borderRadius: 10,
-  },
-  cardContent: {
-    fontSize: 14,
-    color: "#333",
-    marginBottom: 5,
-  },
-  comment: {
-    padding: 10,
-    borderBottomWidth: 1,
-    borderBottomColor: "#e0e0e0",
-  },
-  commentUser: {
-    fontWeight: "bold",
-  },
-  searchInput: {
-    borderWidth: 1,
-    borderColor: "gray",
-    borderRadius: 5,
-    padding: 10,
-    margin: 10,
-  },
-  addButton: {
-    width: 40,
-    height: 40,
-    backgroundColor: "#4CAF50",
-    borderRadius: 5,
-    justifyContent: "center",
-    alignItems: "center",
   },
 });

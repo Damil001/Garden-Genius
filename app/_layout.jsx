@@ -5,6 +5,7 @@ import Toast from "react-native-toast-message";
 import tamaguiConfig from "../tamagui.config";
 import { TamaguiProvider } from "tamagui";
 import { GestureHandlerRootView } from "react-native-gesture-handler";
+import "../global.css";
 const tokenCache = {
   async getToken(key) {
     try {

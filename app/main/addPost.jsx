@@ -15,7 +15,7 @@ import { getFirestore, collection, addDoc, getDocs } from "firebase/firestore";
 import { getStorage, ref, uploadBytes, getDownloadURL } from "firebase/storage";
 import * as ImagePicker from "expo-image-picker"; // Importing Expo Image Picker
 import { useUser } from "@clerk/clerk-react";
-
+import { MaterialIcons } from "@expo/vector-icons";
 import { Sheet } from "@tamagui/sheet"; // Importing BottomSheet from Temagui
 import { Ionicons } from "@expo/vector-icons";
 import { Button, XStack, YStack, Card } from "tamagui";
@@ -393,325 +393,206 @@ const addPost = () => {
   const sendNotification = async (userId) => {
     const user = await fetchUserById(userId);
     const expoToken = user.public_metadata.pushToken;
+    console.log(expoToken);
     await sendPushNotification(expoToken);
   };
+  // Keep all your imports and logic the same, just update the return JSX part:
+
   return (
-    <>
-      <ScrollView style={styles.container}>
-        <XStack justifyContent="space-between" gap={10} alignItems="center">
-          <TextInput
-            style={styles.searchInput} // Add a style for the search input
-            value={searchQuery}
-            onChangeText={setSearchQuery}
-            placeholder="Search by plant type"
-            flexGrow={1}
-          />
-          <TouchableOpacity onPress={handleOpenSheet}>
-            <Ionicons name="add-circle-outline" size={24} color="#4CAF50" />
-          </TouchableOpacity>
-        </XStack>
-        <YStack>
+    <View className="flex-1 bg-gray-50">
+      <ScrollView className="flex-1">
+        {/* Search Header */}
+        <View className="bg-green-600 pt-14 pb-6 px-4">
+          <View className="flex-row items-center gap-3">
+            <View className="flex-1 relative">
+              <TextInput
+                placeholder="Search plant transfers..."
+                placeholderTextColor="white"
+                value={searchQuery}
+                onChangeText={setSearchQuery}
+                className="bg-white/20 px-4 py-2.5 rounded-xl text-white pr-10"
+              />
+              <MaterialIcons
+                name="search"
+                size={20}
+                color="white"
+                style={{ position: "absolute", right: 12, top: 12 }}
+              />
+            </View>
+            <TouchableOpacity
+              onPress={() => setOpen(true)}
+              className="bg-white/20 p-3 rounded-xl"
+            >
+              <Ionicons name="add" size={24} color="white" />
+            </TouchableOpacity>
+          </View>
+        </View>
+
+        {/* Graft Transfers List */}
+        <View className="px-4 -mt-4">
           {loading ? (
-            <ActivityIndicator size="large" color="#4CAF50" />
+            <ActivityIndicator size="large" color="#16a34a" className="py-8" />
           ) : (
-            graftTransfers
-              .filter((transfer) =>
-                transfer.plantType
-                  .toLowerCase()
-                  .includes(searchQuery.toLowerCase())
-              ) // Filter based on search query for plant type
-              .map((transfer) => (
-                <Card style={styles.card}>
-                  <Image
-                    source={{ uri: transfer.plantImage }}
-                    style={styles.cardImage}
-                  />
-                  <View style={styles.cardContentContainer}>
-                    <Text style={styles.cardTitle}>{transfer.plantType}</Text>
-                    <Text style={styles.cardContent}>{transfer.content}</Text>
-                    <Text style={styles.cardLocation}>
-                      <Ionicons
-                        name="location-outline"
-                        size={14}
-                        color="#888"
-                      />{" "}
-                      {transfer.location}
-                    </Text>
-                    <Text style={styles.cardUser}>
-                      Created by: {userNames[transfer.userId] || "Unknown"}
-                    </Text>
+            <View className="space-y-4 pb-4">
+              {graftTransfers
+                .filter((transfer) =>
+                  transfer.plantType
+                    .toLowerCase()
+                    .includes(searchQuery.toLowerCase())
+                )
+                .map((transfer) => (
+                  <View
+                    key={transfer.id}
+                    className="bg-white rounded-2xl shadow-sm overflow-hidden"
+                  >
+                    {/* User Info */}
+                    <View className="p-4 flex-row items-center border-b border-gray-100">
+                      <View className="bg-green-100 p-2 rounded-full">
+                        <Ionicons name="leaf" size={20} color="#16a34a" />
+                      </View>
+                      <View className="ml-3">
+                        <Text className="text-base font-semibold text-gray-800">
+                          {userNames[transfer.userId] || "Unknown"}
+                        </Text>
+                        <Text className="text-sm text-gray-500">
+                          {transfer.location}
+                        </Text>
+                      </View>
+                    </View>
+
+                    {/* Transfer Image */}
+                    <Image
+                      source={{ uri: transfer.plantImage }}
+                      className="w-full h-56"
+                      style={{ resizeMode: "cover" }}
+                    />
+
+                    {/* Transfer Content */}
+                    <View className="p-4">
+                      <Text className="text-lg font-semibold text-gray-800 mb-2">
+                        {transfer.plantType}
+                      </Text>
+                      <Text className="text-gray-600 leading-relaxed">
+                        {transfer.content}
+                      </Text>
+                    </View>
+
+                    {/* Action Buttons */}
                     {user.id !== transfer.userId && (
-                      <YStack gap={10} marginTop={10}>
-                        <Button
+                      <View className="p-4 bg-gray-50 space-y-2">
+                        <TouchableOpacity
                           onPress={() => {
                             sendNotification(transfer.userId);
                             createGradftRequest(transfer.id, transfer.userId);
                           }}
-                          theme="green"
-                          iconAfter={
-                            <Ionicons
-                              name="arrow-forward-circle-outline"
-                              size={24}
-                              color="#fff"
-                            />
-                          }
+                          className="bg-green-600 py-3 rounded-xl flex-row items-center justify-center"
                           disabled={loadingRequest}
                         >
                           {loadingRequest ? (
-                            <ActivityIndicator size="small" color="#fff" />
+                            <ActivityIndicator size="small" color="white" />
                           ) : (
-                            "Request Transfer"
+                            <>
+                              <Text className="text-white font-medium mr-2">
+                                Request Transfer
+                              </Text>
+                              <Ionicons
+                                name="arrow-forward"
+                                size={18}
+                                color="white"
+                              />
+                            </>
                           )}
-                        </Button>
-                        <Button
-                          onPress={() =>
-                            createDirectMessageChannel(transfer.userId)
-                          }
-                          themeInverse
-                          iconAfter={
-                            <Ionicons
-                              name="chatbubbles-outline"
-                              size={24}
-                              color="#4CAF50"
-                            />
-                          }
-                          disabled={loadingRequest}
-                        >
-                          Chat
-                        </Button>
-                      </YStack>
+                        </TouchableOpacity>
+                      </View>
                     )}
                   </View>
-                </Card>
-              ))
+                ))}
+            </View>
           )}
-        </YStack>
+        </View>
 
+        {/* Create Post Sheet */}
         <Sheet
           modal
           open={open}
           onOpenChange={setOpen}
-          snapPoints={[80]}
+          snapPoints={[70]}
           dismissOnSnapToBottom
         >
-          <Sheet.Overlay opacity={0} />
-          <Sheet.Frame style={styles.sheetFrame}>
+          <Sheet.Frame className="bg-white rounded-t-3xl">
             <Sheet.Handle />
-            <Sheet.ScrollView contentContainerStyle={styles.sheetContent}>
-              <View style={styles.header}>
-                <Text style={styles.headerTitle}>Graft Transfer Post</Text>
-                <TouchableOpacity onPress={handleCloseSheet}>
-                  <Ionicons name="close" size={24} color="#4CAF50" />
+            <View className="px-4 py-3 border-b border-gray-100">
+              <Text className="text-lg font-semibold text-gray-800">
+                Share Your Plant Transfer
+              </Text>
+            </View>
+
+            <ScrollView className="p-4">
+              <View className="space-y-4">
+                <TextInput
+                  placeholder="Plant type..."
+                  value={plantType}
+                  onChangeText={setPlantType}
+                  className="bg-gray-50 px-4 py-3 rounded-xl text-gray-800"
+                />
+
+                <TextInput
+                  placeholder="Describe your plant transfer..."
+                  value={postContent}
+                  onChangeText={setPostContent}
+                  multiline
+                  numberOfLines={4}
+                  className="bg-gray-50 px-4 py-3 rounded-xl text-gray-800"
+                />
+
+                <TextInput
+                  placeholder="Location..."
+                  value={location}
+                  onChangeText={setLocation}
+                  className="bg-gray-50 px-4 py-3 rounded-xl text-gray-800"
+                />
+
+                <TouchableOpacity
+                  onPress={handleImagePicker}
+                  className="bg-gray-50 p-4 rounded-xl flex-row items-center justify-center border-2 border-dashed border-gray-200"
+                >
+                  <Ionicons name="image-outline" size={24} color="#16a34a" />
+                  <Text className="ml-2 text-gray-600">Add Plant Photo</Text>
+                </TouchableOpacity>
+
+                {plantImage && (
+                  <View className="rounded-xl overflow-hidden">
+                    <Image
+                      source={{ uri: plantImage.assets[0].uri }}
+                      className="w-full h-48"
+                      style={{ resizeMode: "cover" }}
+                    />
+                  </View>
+                )}
+
+                <TouchableOpacity
+                  onPress={handleSubmit}
+                  className="bg-green-600 py-3 rounded-xl flex-row items-center justify-center"
+                >
+                  <Text className="text-white font-medium">
+                    Share Transfer Listing
+                  </Text>
                 </TouchableOpacity>
               </View>
-
-              <TextInput
-                style={styles.input}
-                value={postContent}
-                onChangeText={setPostContent}
-                placeholder="Enter your post content"
-              />
-              <TextInput
-                style={styles.input}
-                value={plantType}
-                onChangeText={setPlantType}
-                placeholder="Enter plant type"
-              />
-              <TextInput
-                style={styles.input}
-                value={location}
-                onChangeText={setLocation}
-                placeholder="Enter location"
-              />
-              <Button
-                iconAfter={<Ionicons name="image" size={24} color="#4CAF50" />}
-                size="$4"
-                onPress={handleImagePicker}
-                variant="outline"
-                marginTop={20}
-                themeInverse
-              >
-                Pick Plant Image
-              </Button>
-              {plantImage && (
-                <Image
-                  source={{ uri: plantImage.assets[0].uri }}
-                  style={styles.image}
-                />
-              )}
-              <Button
-                iconAfter={<Ionicons name="leaf" size={24} color="#4CAF50" />}
-                size="$4"
-                onPress={handleSubmit}
-                theme="green"
-                marginTop={20}
-              >
-                Create a Graft Listing
-              </Button>
-            </Sheet.ScrollView>
+            </ScrollView>
           </Sheet.Frame>
         </Sheet>
       </ScrollView>
-    </>
+    </View>
   );
+  // Remove the StyleSheet as we're using Tailwind classes now
 };
 
 // Updated styles for a modern garden-themed look
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    padding: 20,
-    backgroundColor: "#f9f9f9",
-  },
-  title: {
-    fontSize: 24,
-    fontWeight: "bold",
-    color: "#2E7D32", // Dark green color
-    marginBottom: 20,
-    textAlign: "center",
-  },
-  input: {
-    height: 50,
-    borderColor: "#4CAF50", // Green border
-    borderWidth: 1,
-    borderRadius: 5,
-    paddingHorizontal: 10,
-    marginBottom: 15,
-  },
-  image: {
-    width: 100,
-    height: 100,
-    borderRadius: 10,
-    marginVertical: 10,
-  },
-  sheetFrame: {
-    backgroundColor: "#ffffff", // White background for the sheet
-    borderTopLeftRadius: 20,
-    borderTopRightRadius: 20,
-    shadowColor: "#000",
-    shadowOffset: {
-      width: 0,
-      height: 2,
-    },
-    shadowOpacity: 0.25,
-    shadowRadius: 4,
-    elevation: 5, // For Android shadow
-  },
-  sheetContent: {
-    padding: 20, // Increased padding for better spacing
-  },
-  header: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "center",
-    marginBottom: 20,
-  },
-  headerTitle: {
-    fontSize: 24,
-    fontWeight: "600", // Semi-bold for a modern look
-    color: "#2E7D32", // Dark green color
-  },
-  button: {
-    borderRadius: 10, // Rounded corners for buttons
-    marginVertical: 10,
-  },
-  submitButton: {
-    fontSize: 18,
-    fontWeight: "bold",
-    color: "#4CAF50",
-  },
-  submitButtonContainer: {
-    flexDirection: "row",
-    alignItems: "center",
-    width: "100%",
-    justifyContent: "center",
-    marginTop: 20,
-    gap: 10,
-  },
-  pickImageButton: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 10,
-    borderWidth: 1,
-    borderColor: "#4CAF50",
-    borderRadius: 5,
-    padding: 10,
-    justifyContent: "center",
-  },
-  pickImageButtonText: {
-    fontSize: 18,
-    fontWeight: "bold",
-    color: "#4CAF50",
-  },
-  card: {
+  sheetContainer: {
     backgroundColor: "#fff",
-    borderRadius: 15,
-    overflow: "hidden",
-    marginBottom: 15,
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
-    elevation: 3,
-  },
-  cardImage: {
-    width: "100%",
-    height: 150,
-  },
-  cardContentContainer: {
-    padding: 15,
-  },
-  cardTitle: {
-    fontSize: 18,
-    fontWeight: "bold",
-    color: "#333",
-    marginBottom: 5,
-  },
-  cardContent: {
-    fontSize: 14,
-    color: "#555",
-    marginBottom: 5,
-  },
-  cardLocation: {
-    fontSize: 14,
-    color: "#888",
-    marginBottom: 10,
-  },
-  cardUser: {
-    fontSize: 12,
-    color: "#888",
-    marginBottom: 10,
-  },
-  cardFooter: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "center",
-  },
-  harvestButton: {
-    backgroundColor: "#4CAF50",
-    paddingVertical: 5,
-    paddingHorizontal: 15,
-    borderRadius: 20,
-  },
-  chatButton: {
-    backgroundColor: "#4CAF50",
-    paddingVertical: 5,
-    paddingHorizontal: 15,
-    borderRadius: 20,
-  },
-  searchInput: {
-    height: 50,
-    borderColor: "#4CAF50", // Green border
-    borderWidth: 1,
-    borderRadius: 5,
-    paddingHorizontal: 10,
-    marginBottom: 15,
-  },
-  transferButton: {
-    marginTop: 10,
-    backgroundColor: "#4CAF50",
     padding: 10,
-    borderRadius: 5,
   },
 });
 
