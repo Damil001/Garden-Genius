@@ -27,10 +27,11 @@ import {
 import { getStorage, ref, uploadBytes, getDownloadURL } from "firebase/storage";
 import app from "../../firebaseConfig";
 import { useUser } from "@clerk/clerk-expo";
+import { Redirect } from "expo-router";
 import { MaterialIcons } from "@expo/vector-icons";
 
 export default function CommunityForm() {
-  const { user } = useUser();
+  const { user, isLoaded } = useUser();
   const db = getFirestore(app);
   const storage = getStorage(app);
   const { showError, showSuccess, showInfo } = useToast();
@@ -87,6 +88,10 @@ export default function CommunityForm() {
 
   // Function to create a post
   const handleCreatePost = async () => {
+    if (!user) {
+      showError("Error", "You must be logged in to create a post.");
+      return;
+    }
     if (!title || !content || !plantType) {
       showError("Error", "Please fill in all fields.");
       return;
@@ -145,6 +150,11 @@ export default function CommunityForm() {
       setIsFetchingPosts(false); // End loading
     };
     fetchPosts();
+    return () => {
+      setPosts([]);
+      setComments([]);
+      setSelectedPost(null);
+    };
   }, [db]);
 
   // Fetch comments for a selected post
@@ -196,7 +206,11 @@ export default function CommunityForm() {
   const handleLike = async (postId) => {
     const postRef = doc(db, "communityPosts", postId);
     const post = posts.find((p) => p.id === postId);
-    const isLiked = post.likedBy?.includes(user.id);
+    const isLiked = post?.likedBy?.includes(user?.id);
+    if (!user) {
+      showError("Error", "You must be logged in to like a post.");
+      return;
+    }
 
     try {
       if (isLiked) {
@@ -212,7 +226,7 @@ export default function CommunityForm() {
               ? {
                   ...p,
                   likesCount: Math.max((p.likesCount || 1) - 1, 0),
-                  likedBy: p.likedBy.filter((id) => id !== user.id),
+                  likedBy: p?.likedBy?.filter((id) => id !== user?.id),
                 }
               : p
           )
@@ -244,7 +258,11 @@ export default function CommunityForm() {
   const handleCommentLike = async (postId, commentId) => {
     const commentRef = doc(db, "communityPosts", postId, "comments", commentId);
     const comment = comments.find((c) => c.id === commentId);
-    const isLiked = comment.likedBy?.includes(user.id);
+    const isLiked = comment?.likedBy?.includes(user?.id);
+    if (!user) {
+      showError("Error", "You must be logged in to like a comment.");
+      return;
+    }
 
     try {
       if (isLiked) {
@@ -260,7 +278,7 @@ export default function CommunityForm() {
               ? {
                   ...c,
                   likesCount: Math.max((c.likesCount || 1) - 1, 0),
-                  likedBy: c.likedBy.filter((id) => id !== user.id),
+                  likedBy: c?.likedBy?.filter((id) => id !== user?.id),
                 }
               : c
           )
@@ -278,7 +296,7 @@ export default function CommunityForm() {
               ? {
                   ...c,
                   likesCount: (c.likesCount || 0) + 1,
-                  likedBy: [...(c.likedBy || []), user.id],
+                  likedBy: [...(c.likedBy || []), user?.id],
                 }
               : c
           )
@@ -289,7 +307,12 @@ export default function CommunityForm() {
       showError("Error", "An error occurred while liking the comment.");
     }
   };
-
+  if (!isLoaded) {
+    return <Text>Loading...</Text>;
+  }
+  if (!user) {
+    return <Redirect href="/" />;
+  }
   return (
     <View className="flex-1 bg-gray-50">
       <ScrollView className="flex-1">
@@ -370,13 +393,13 @@ export default function CommunityForm() {
                     >
                       <Ionicons
                         name={
-                          post.likedBy?.includes(user.id)
+                          post?.likedBy?.includes(user?.id)
                             ? "heart"
                             : "heart-outline"
                         }
                         size={20}
                         color={
-                          post.likedBy?.includes(user.id) ? "#16a34a" : "#666"
+                          post?.likedBy?.includes(user?.id) ? "#16a34a" : "#666"
                         }
                       />
                       <Text className="text-gray-600">
@@ -466,13 +489,13 @@ export default function CommunityForm() {
                         >
                           <Ionicons
                             name={
-                              comment.likedBy?.includes(user.id)
+                              comment?.likedBy?.includes(user?.id)
                                 ? "heart"
                                 : "heart-outline"
                             }
                             size={16}
                             color={
-                              comment.likedBy?.includes(user.id)
+                              comment?.likedBy?.includes(user?.id)
                                 ? "#16a34a"
                                 : "#666"
                             }

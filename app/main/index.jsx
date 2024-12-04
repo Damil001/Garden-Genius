@@ -134,25 +134,79 @@ const NotificationCard = ({ notification }) => {
   );
 };
 
-const QuickStats = () => (
-  <View className="flex-row justify-between mb-6">
-    <View className="bg-white rounded-xl p-4 flex-1 mr-2">
-      <View className="bg-blue-50 p-2 rounded-full w-10 mb-2">
-        <Ionicons name="water" size={20} color="#2563eb" />
-      </View>
-      <Text className="text-2xl font-bold text-gray-800">12</Text>
-      <Text className="text-gray-600">Plants Watered</Text>
-    </View>
-    <View className="bg-white rounded-xl p-4 flex-1 ml-2">
-      <View className="bg-green-50 p-2 rounded-full w-10 mb-2">
-        <Ionicons name="leaf" size={20} color="#16a34a" />
-      </View>
-      <Text className="text-2xl font-bold text-gray-800">5</Text>
-      <Text className="text-gray-600">Growing Plants</Text>
-    </View>
-  </View>
-);
+const QuickStats = ({ userId }) => {
+  const [stats, setStats] = useState({ plantsWatered: 0, growingPlants: 0 });
+  const db = getFirestore();
 
+  const fetchStats = async () => {
+    try {
+      // Get completed watering events
+      const wateringQuery = query(
+        collection(db, "careEvents"),
+        where("userId", "==", userId),
+        where("type", "==", "Water"),
+        where("completed", "==", true)
+      );
+      const wateringSnapshot = await getDocs(wateringQuery);
+      const plantsWatered = wateringSnapshot.size;
+
+      // Get all care events to count unique plants
+      const allPlantsQuery = query(
+        collection(db, "careEvents"),
+        where("userId", "==", userId)
+      );
+      const allPlantsSnapshot = await getDocs(allPlantsQuery);
+
+      // Create a Set of unique plantIds to get the actual number of plants
+      const uniquePlantIds = new Set();
+      allPlantsSnapshot.forEach((doc) => {
+        const data = doc.data();
+        if (data.plantId) {
+          uniquePlantIds.add(data.plantId);
+        }
+      });
+
+      // The size of the Set gives us the number of unique plants
+      const growingPlants = uniquePlantIds.size;
+
+      setStats({
+        plantsWatered,
+        growingPlants,
+      });
+    } catch (error) {
+      console.error("Error fetching stats:", error);
+    }
+  };
+
+  useEffect(() => {
+    if (userId) {
+      fetchStats();
+    }
+  }, [userId]);
+
+  return (
+    <View className="flex-row justify-between mb-6">
+      <View className="bg-white rounded-xl p-4 flex-1 mr-2">
+        <View className="bg-blue-50 p-2 rounded-full w-10 mb-2">
+          <Ionicons name="water" size={20} color="#2563eb" />
+        </View>
+        <Text className="text-2xl font-bold text-gray-800">
+          {stats.plantsWatered}
+        </Text>
+        <Text className="text-gray-600">Plants Watered</Text>
+      </View>
+      <View className="bg-white rounded-xl p-4 flex-1 ml-2">
+        <View className="bg-green-50 p-2 rounded-full w-10 mb-2">
+          <Ionicons name="leaf" size={20} color="#16a34a" />
+        </View>
+        <Text className="text-2xl font-bold text-gray-800">
+          {stats.growingPlants}
+        </Text>
+        <Text className="text-gray-600">Growing Plants</Text>
+      </View>
+    </View>
+  );
+};
 const GardenTips = () => (
   <View className="mb-4">
     <View className="flex-row justify-between items-center mb-3">
@@ -163,10 +217,10 @@ const GardenTips = () => (
     </View>
     <ScrollView horizontal showsHorizontalScrollIndicator={false}>
       {[
-        { title: "Spring Planting", icon: "leaf", color: "bg-green-50" },
-        { title: "Pest Control", icon: "bug", color: "bg-red-50" },
+        { title: "Seed Identification", icon: "leaf", color: "bg-green-50" },
+        { title: "Pest Identification", icon: "bug", color: "bg-red-50" },
         { title: "Watering Guide", icon: "water", color: "bg-blue-50" },
-        { title: "Soil Care", icon: "earth", color: "bg-amber-50" },
+        { title: "Comunity forum", icon: "earth", color: "bg-amber-50" },
       ].map((tip, index) => (
         <TouchableOpacity
           key={index}
@@ -492,7 +546,7 @@ export default function Page() {
           <View className="px-4 -mt-4">
             <WeatherSection weather={weather} isLoading={isLoadingWeather} />
             <GardenTips />
-            <QuickStats />
+            <QuickStats userId={user?.id} />
             <CareEventsSection events={careEvents} />
           </View>
           <BlogEventSection />

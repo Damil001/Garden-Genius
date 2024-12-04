@@ -27,268 +27,126 @@ import { useNavigation } from "@react-navigation/native";
 import { StreamChat } from "stream-chat";
 import { updateUser } from "@clerk/clerk-expo";
 import useToast from "../../hooks/useToast";
+import { Redirect } from "expo-router";
 const addPost = () => {
+  // All hooks at the top
   const { showError, showSuccess, showInfo } = useToast();
-  const { user } = useUser();
-  const streamApiKey = "p9mpz956q36h";
-  const [client, setClient] = useState(null);
+  const { user, isLoaded } = useUser();
   const navigation = useNavigation();
+  const streamApiKey = "p9mpz956q36h";
+
+  // All useState hooks
+  const [client, setClient] = useState(null);
+  const [postContent, setPostContent] = useState("");
+  const [plantType, setPlantType] = useState("");
+  const [plantImage, setPlantImage] = useState(null);
+  const [location, setLocation] = useState("");
+  const [open, setOpen] = useState(false);
+  const [graftTransfers, setGraftTransfers] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [userNames, setUserNames] = useState({});
+  const [searchQuery, setSearchQuery] = useState("");
+  const [loadingRequest, setLoadingRequest] = useState(false);
+  const [selectedTransferId, setSelectedTransferId] = useState(null);
+
+  // Firebase initialization
+  const db = getFirestore(app);
+  const storage = getStorage(app);
+
+  // Push notifications hook
+  usePushNotifications();
+
+  // Chat initialization effect
   useEffect(() => {
     const initChat = async () => {
+      if (!user) return;
+
       try {
         const chatClient = StreamChat.getInstance(streamApiKey);
         await chatClient.connectUser(
           {
             id: user.id,
-            name: `${user.firstName} ${user.lastName}`, // Use Clerk user info
+            name: `${user.firstName} ${user.lastName}`,
           },
-          chatClient.devToken(user.id) // For dev purposes, use devToken
+          chatClient.devToken(user.id)
         );
-        setClient(chatClient); // Set the client state
+        setClient(chatClient);
       } catch (error) {
         console.error("Error initializing chat:", error);
       }
     };
+
     initChat();
 
-    // Cleanup on unmount
     return () => {
       if (client) {
         client.disconnectUser();
       }
     };
-  }, [user.id]);
-  const createDirectMessageChannel = async (recipientId) => {
-    if (!client) {
-      console.error("Stream client is not initialized.");
-      return;
-    }
+  }, [user]);
 
-    try {
-      const channelId = Math.random().toString(36).substring(2, 42);
-      const channel = client.channel("messaging", channelId, {
-        members: [user.id, recipientId],
-      });
-
-      await channel.watch();
-      console.log("Channel created:", channel);
-    } catch (error) {
-      console.error("Error creating channel:", error);
-    }
-  };
-
-  // Check if user is defined before accessing user.id
-  if (!user) {
-    console.error("User is not defined");
-    return null; // or return a loading indicator
-  }
-
-  const [postContent, setPostContent] = useState(""); // State for post content
-  const [plantType, setPlantType] = useState(""); // State for plant type
-  const [plantImage, setPlantImage] = useState(null); // State for plant image
-  const [location, setLocation] = useState(""); // State for location
-  const db = getFirestore(app);
-  const storage = getStorage(app);
-  const [open, setOpen] = useState(false);
-  const [graftTransfers, setGraftTransfers] = useState([]); // State for graft transfers
-  const [loading, setLoading] = useState(true); // State for loading
-  const [userNames, setUserNames] = useState({});
-  const [searchQuery, setSearchQuery] = useState("");
-  const [loadingRequest, setLoadingRequest] = useState(false); // State for loading request
-  const [selectedTransferId, setSelectedTransferId] = useState(null); // State to track selected transfer ID
-  usePushNotifications(); // Call the custom hook for notifications
-
-  const handleOpenSheet = () => {
-    setOpen(true);
-  };
-
-  const handleCloseSheet = () => {
-    setOpen(false);
-  };
-  // Initialize Firebase Storage
-
-  const handleImagePicker = async () => {
-    try {
-      // Request permission to access the media library
-      const permissionResult =
-        await ImagePicker.requestMediaLibraryPermissionsAsync();
-
-      if (permissionResult.granted === false) {
-        Alert.alert(
-          "Permission Denied",
-          "Permission to access camera roll is required!"
-        );
-        return;
-      }
-
-      // Launch the image picker
-      const result = await ImagePicker.launchImageLibraryAsync({
-        mediaTypes: ImagePicker.MediaTypeOptions.Images,
-        allowsEditing: true,
-        aspect: [4, 3],
-        quality: 1,
-      });
-
-      if (!result.canceled) {
-        console.log("Image Picker Result:", result); // Log the result for debugging
-        setPlantImage(result); // Set the selected image object
-      }
-    } catch (error) {
-      console.error("Error picking image: ", error);
-      showError("Error", "An error occurred while picking the image.");
-    }
-  };
-
-  const handleSubmit = async () => {
-    if (!plantImage) {
-      showError(
-        "No Image Selected 🚫",
-        "Please select an image before submitting. ❌"
-      );
-
-      return;
-    }
-
-    console.log("Selected Plant Image:", plantImage); // Log the plant image object
-
-    try {
-      // Ensure plantImage.assets is defined and has at least one item
-      if (!plantImage.assets || plantImage.assets.length === 0) {
-        console.error("Image assets are undefined or empty");
-        showError("Error", "Image assets are undefined or empty.");
-        return;
-      }
-
-      const imageUri = plantImage.assets[0].uri; // Access the URI correctly
-      console.log("Image URI:", imageUri); // Log the image URI for debugging
-
-      // Ensure imageUri is defined
-      if (!imageUri) {
-        console.error("Image URI is undefined");
-        showError("Error", "Image URI is undefined.");
-        return;
-      }
-
-      // Upload image to Firebase Storage
-      const imageRef = ref(
-        storage,
-        `graftTransfers/${imageUri.split("/").pop()}`
-      ); // Use the image name from the URI
-      const response = await fetch(imageUri);
-      const blob = await response.blob(); // Convert the image to a blob
-      await uploadBytes(imageRef, blob); // Upload the image
-
-      // Get the download URL
-      const imageUrl = await getDownloadURL(imageRef);
-
-      // Save post details to Firestore, including user ID
-      const docRef = await addDoc(collection(db, "graftTransfers"), {
-        content: postContent,
-        plantType: plantType, // Added plant type
-        plantImage: imageUrl, // Store the image URL
-        location: location, // Added location
-        userId: user.id, // Save the user ID from Clerk
-      });
-      console.log("Document written with ID: ", docRef.id);
-
-      showSuccess(
-        "Post Created 🎉",
-        "Graft transfer post created successfully! ✅"
-      );
-
-      // Reset fields to default state
-      setPostContent("");
-      setPlantType("");
-      setPlantImage(null);
-      setLocation("");
-    } catch (error) {
-      console.error("Error adding document: ", error);
-      showError(
-        "Error Adding Document 🚫",
-        "An error occurred while adding the document. ❌"
-      );
-    }
-  };
-  // Use Clerk API to fetch user by ID
-  const fetchUserById = async (userId) => {
-    const apiUrl = `https://api.clerk.dev/v1/users/${userId}`;
-    const apiKey = "sk_test_eTkzEx0tcIksKsSTsgRMP4VTyKLIE1jZKHzrKMhnzR"; // Replace with your Clerk API key
-
-    try {
-      const response = await fetch(apiUrl, {
-        headers: {
-          Authorization: `Bearer ${apiKey}`,
-          "Content-Type": "application/json",
-        },
-      });
-
-      if (!response.ok) {
-        throw new Error("Error fetching user");
-      }
-
-      const user = await response.json();
-      console.log(user);
-      return user;
-    } catch (error) {
-      console.error("Error fetching user by ID:", error);
-    }
-  };
-  const createGradftRequest = async (transferId, initiatorId) => {
-    try {
-      const docRef = await addDoc(collection(db, "graftRequests"), {
-        transferId: transferId,
-        requesterId: user.id,
-        ownerId: initiatorId,
-      });
-      console.log("Document written with ID: ", docRef.id);
-    } catch (error) {
-      console.error("Error adding document: ", error);
-    }
-  };
-  // Fetch graft transfers data from Firestore
+  // Fetch graft transfers effect
   useEffect(() => {
+    let isMounted = true;
+
     const fetchGraftTransfers = async () => {
-      setLoading(true); // Set loading to true before fetching
+      if (!user) return;
+
+      setLoading(true);
       try {
         const querySnapshot = await getDocs(collection(db, "graftTransfers"));
         const transfers = querySnapshot.docs.map((doc) => ({
           id: doc.id,
           ...doc.data(),
         }));
-        setGraftTransfers(transfers); // Set the fetched data to state
 
-        // Fetch user names based on user IDs
+        if (!isMounted) return;
+
+        setGraftTransfers(transfers);
+
         const userIds = transfers.map((transfer) => transfer.userId);
         const uniqueUserIds = [...new Set(userIds)];
-        console.log(uniqueUserIds); // Get unique user IDs
+
         const userDetails = await Promise.all(
           uniqueUserIds.map(async (id) => {
-            const user = await fetchUserById(id); // Fetch user details from Clerk
+            const userData = await fetchUserById(id);
             return {
               id,
-              name: user
-                ? user.first_name || user.last_name || "Unknown"
+              name: userData
+                ? userData.first_name || userData.last_name || "Unknown"
                 : "Unknown",
             };
           })
         );
-        console.log(userDetails);
+
+        if (!isMounted) return;
+
         const userNameMap = userDetails.reduce((acc, user) => {
-          acc[user.id] = user.name; // Map user ID to user name
+          acc[user.id] = user.name;
           return acc;
         }, {});
-        setUserNames(userNameMap); // Set user names in state
+
+        setUserNames(userNameMap);
       } catch (error) {
-        console.error("Error fetching graft transfers: ", error);
+        console.error("Error fetching graft transfers:", error);
+        if (isMounted) {
+          showError("Error", "Failed to fetch transfers");
+        }
       } finally {
-        setLoading(false); // Set loading to false after fetching
+        if (isMounted) {
+          setLoading(false);
+        }
       }
     };
 
-    fetchGraftTransfers(); // Call the fetch function
-  }, [db]); // Dependency array includes db
+    fetchGraftTransfers();
 
-  // Request notification permissions
+    return () => {
+      isMounted = false;
+    };
+  }, [db, user]);
+
+  // Notifications permission effect
   useEffect(() => {
     const requestPermissions = async () => {
       const { status } = await Notifications.getPermissionsAsync();
@@ -303,10 +161,165 @@ const addPost = () => {
         }
       }
     };
+
     requestPermissions();
   }, []);
 
-  // Function to handle transfer request
+  // Early returns for loading and auth
+  if (!isLoaded) {
+    return (
+      <View className="flex-1 items-center justify-center">
+        <ActivityIndicator size="large" color="#16a34a" />
+      </View>
+    );
+  }
+
+  if (!user) {
+    return <Redirect href="/" />;
+  }
+
+  // Helper Functions
+  const fetchUserById = async (userId) => {
+    const apiUrl = `https://api.clerk.dev/v1/users/${userId}`;
+    const apiKey = "sk_test_eTkzEx0tcIksKsSTsgRMP4VTyKLIE1jZKHzrKMhnzR";
+
+    try {
+      const response = await fetch(apiUrl, {
+        headers: {
+          Authorization: `Bearer ${apiKey}`,
+          "Content-Type": "application/json",
+        },
+      });
+
+      if (!response.ok) {
+        throw new Error("Error fetching user");
+      }
+
+      const userData = await response.json();
+      return userData;
+    } catch (error) {
+      console.error("Error fetching user by ID:", error);
+      return null;
+    }
+  };
+
+  const createDirectMessageChannel = async (recipientId) => {
+    if (!client) {
+      console.error("Stream client is not initialized.");
+      return;
+    }
+
+    try {
+      const channelId = Math.random().toString(36).substring(2, 42);
+      const channel = client.channel("messaging", channelId, {
+        members: [user.id, recipientId],
+      });
+      await channel.watch();
+    } catch (error) {
+      console.error("Error creating channel:", error);
+    }
+  };
+
+  const handleImagePicker = async () => {
+    try {
+      const permissionResult =
+        await ImagePicker.requestMediaLibraryPermissionsAsync();
+
+      if (permissionResult.granted === false) {
+        Alert.alert(
+          "Permission Denied",
+          "Permission to access camera roll is required!"
+        );
+        return;
+      }
+
+      const result = await ImagePicker.launchImageLibraryAsync({
+        mediaTypes: ImagePicker.MediaTypeOptions.Images,
+        allowsEditing: true,
+        aspect: [4, 3],
+        quality: 1,
+      });
+
+      if (!result.canceled) {
+        setPlantImage(result);
+      }
+    } catch (error) {
+      console.error("Error picking image:", error);
+      showError("Error", "An error occurred while picking the image.");
+    }
+  };
+
+  const handleSubmit = async () => {
+    if (!plantImage) {
+      showError(
+        "No Image Selected 🚫",
+        "Please select an image before submitting. ❌"
+      );
+      return;
+    }
+
+    try {
+      if (!plantImage.assets || plantImage.assets.length === 0) {
+        showError("Error", "Image assets are undefined or empty.");
+        return;
+      }
+
+      const imageUri = plantImage.assets[0].uri;
+      if (!imageUri) {
+        showError("Error", "Image URI is undefined.");
+        return;
+      }
+
+      const imageRef = ref(
+        storage,
+        `graftTransfers/${imageUri.split("/").pop()}`
+      );
+      const response = await fetch(imageUri);
+      const blob = await response.blob();
+      await uploadBytes(imageRef, blob);
+
+      const imageUrl = await getDownloadURL(imageRef);
+
+      const docRef = await addDoc(collection(db, "graftTransfers"), {
+        content: postContent,
+        plantType,
+        plantImage: imageUrl,
+        location,
+        userId: user.id,
+      });
+
+      showSuccess(
+        "Post Created 🎉",
+        "Graft transfer post created successfully! ✅"
+      );
+
+      setPostContent("");
+      setPlantType("");
+      setPlantImage(null);
+      setLocation("");
+      setOpen(false);
+    } catch (error) {
+      console.error("Error adding document:", error);
+      showError(
+        "Error Adding Document 🚫",
+        "An error occurred while adding the document. ❌"
+      );
+    }
+  };
+
+  const createGraftRequest = async (transferId, initiatorId) => {
+    try {
+      await addDoc(collection(db, "graftRequests"), {
+        transferId,
+        requesterId: user.id,
+        ownerId: initiatorId,
+      });
+    } catch (error) {
+      console.error("Error adding graft request:", error);
+      showError("Error", "Failed to create graft request");
+    }
+  };
+
   const handleTransferRequest = async (transferId) => {
     setLoadingRequest(true);
 
@@ -351,14 +364,12 @@ const addPost = () => {
       );
     } catch (error) {
       console.error("Error sending notification:", error);
-      showError(
-        "Notification Error 🚫",
-        "An error occurred while sending the notification. ❌"
-      );
+      showError("Error", "Failed to send notification");
     } finally {
       setLoadingRequest(false);
     }
   };
+
   const sendPushNotification = async (expoToken) => {
     try {
       const message = {
@@ -378,24 +389,37 @@ const addPost = () => {
         },
         body: JSON.stringify(message),
       });
+
       showSuccess(
         "Notification Sent 📩",
         "Your notification has been sent successfully! ✅"
       );
     } catch (error) {
-      showError(
-        "Notification Error 🚫",
-        "An error occurred while sending the notification. ❌"
-      );
       console.error("Error sending push notification:", error);
+      showError("Error", "Failed to send push notification");
     }
   };
+
   const sendNotification = async (userId) => {
-    const user = await fetchUserById(userId);
-    const expoToken = user.public_metadata.pushToken;
-    console.log(expoToken);
+    const recipientUser = await fetchUserById(userId);
+    const expoToken = recipientUser.public_metadata.pushToken;
     await sendPushNotification(expoToken);
   };
+  const createGradftRequest = async (transferId, initiatorId) => {
+    try {
+      const docRef = await addDoc(collection(db, "graftRequests"), {
+        transferId: transferId,
+        requesterId: user.id,
+        ownerId: initiatorId,
+      });
+      console.log("Document written with ID: ", docRef.id);
+    } catch (error) {
+      console.error("Error adding document: ", error);
+    }
+  };
+  const handleOpenSheet = () => setOpen(true);
+  const handleCloseSheet = () => setOpen(false);
+
   // Keep all your imports and logic the same, just update the return JSX part:
 
   return (

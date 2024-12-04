@@ -18,14 +18,14 @@ const PestIdentification = () => {
   const [usePestModel, setUsePestModel] = useState(false);
 
   const API_URLS = {
-    plant: "http://192.168.100.32:8080/predict",
-    pest: "http://192.168.100.32:8081/predict-pest",
+    plant: "https://plant-classifier-final-latest.onrender.com/predict-pest",
+    pest: "https://plant-classifier-final-latest.onrender.com/predict-pest",
   };
 
   const pickImage = async () => {
     try {
       const { status } =
-        await ImagePicker.requestMediaLibraryPermissionsAsync();
+        await ImagePicker.requestMediaLibraryPermissionsAsync(); 
       if (status !== "granted") {
         alert("Sorry, we need camera roll permissions to make this work!");
         return;

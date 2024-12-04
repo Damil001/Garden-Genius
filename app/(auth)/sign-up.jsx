@@ -141,7 +141,7 @@ export default function SignUpScreen() {
 
             {!pendingVerification ? (
               <View className="space-y-4">
-                <View className="flex-row space-x-3">
+                <View className="flex-row space-x-3 gap-2">
                   <View className="flex-1 space-y-2">
                     <Text
                       className="text-gray-700 ml-1"
